@@ -71,6 +71,12 @@ const Dashboard = () => {
             >
               Sales Dashboard
             </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/login")}
+            >
+              Logout
+            </Button>
           </div>
         </div>
       </header>

@@ -5,11 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Book, ArrowRight, Lightbulb, Save, ChevronLeft } from "lucide-react";
+import { Book, ArrowRight, Lightbulb, Save, ChevronLeft, Loader2 } from "lucide-react";
+import { generateBookContent } from "@/lib/gemini";
+import { toast } from "sonner";
 
 const NewBook = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [bookData, setBookData] = useState({
     idea: "",
     topic: "",
@@ -22,15 +25,31 @@ const NewBook = () => {
       "Chapter 3: Advanced Techniques", 
       "Chapter 4: Real-World Applications",
       "Conclusion and Next Steps"
-    ]
+    ],
+    chapters: []
   });
 
-  const handleSaveAndContinue = () => {
+  const handleSaveAndContinue = async () => {
     if (step === 1) {
-      // Generate dummy outline based on the idea
-      setStep(2);
+      setIsGenerating(true);
+      try {
+        const content = await generateBookContent(bookData.idea, bookData.audience, bookData.genre);
+        setBookData(prev => ({
+          ...prev,
+          outline: content.outline,
+          chapters: content.chapters
+        }));
+        toast.success("Book content generated successfully!");
+        setStep(2);
+      } catch (error) {
+        toast.error("Failed to generate content. Please try again.");
+        console.error(error);
+      } finally {
+        setIsGenerating(false);
+      }
     } else {
-      // Navigate to chapter editor
+      // Save book data to localStorage and navigate to chapter editor
+      localStorage.setItem('currentBook', JSON.stringify(bookData));
       navigate("/chapter-editor/new");
     }
   };
@@ -144,10 +163,19 @@ const NewBook = () => {
                 <Button 
                   onClick={handleSaveAndContinue}
                   className="flex-1 bg-gradient-primary hover:opacity-90"
-                  disabled={!bookData.idea.trim()}
+                  disabled={!bookData.idea.trim() || isGenerating}
                 >
-                  Generate Outline
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      Generate Content
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -168,7 +196,10 @@ const NewBook = () => {
             <CardContent className="space-y-6">
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground mb-2">
-                  🤖 <strong>AI Generated Outline</strong> - Based on: "{bookData.idea}"
+                  🤖 <strong>AI Generated Content</strong> - Based on: "{bookData.idea}"
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Generated {bookData.chapters.length} chapters with full content ready for editing.
                 </p>
               </div>
 
@@ -227,7 +258,7 @@ const NewBook = () => {
 
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <p className="text-sm text-muted-foreground text-center">
-            🔌 <strong>Note:</strong> Connect AI API here for real outline generation
+            ✅ <strong>AI Integration Active:</strong> Using Gemini API for real content generation
           </p>
         </div>
       </div>

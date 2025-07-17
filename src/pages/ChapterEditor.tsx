@@ -21,33 +21,49 @@ const ChapterEditor = () => {
   const [currentChapter, setCurrentChapter] = useState(0);
   const [autoSaved, setAutoSaved] = useState(false);
 
-  // Dummy chapter data
-  const [chapters, setChapters] = useState([
-    {
-      title: "Introduction to the Topic",
-      content: "Welcome to this comprehensive guide on creative writing. In this book, we'll explore the fundamental principles that make writing compelling, engaging, and memorable.\n\nWriting is both an art and a craft. While creativity flows from inspiration, the techniques and structures we'll cover will help you channel that creativity into powerful, purposeful prose.\n\nThroughout this journey, you'll learn to:\n• Develop your unique voice as a writer\n• Create compelling characters and narratives\n• Master the mechanics of good writing\n• Build confidence in your creative abilities\n\nWhether you're a complete beginner or looking to refine your skills, this book will provide you with practical tools and insights to elevate your writing.",
-      wordCount: 142,
-      status: "completed"
-    },
-    {
-      title: "Chapter 1: Getting Started",
-      content: "Every writer's journey begins with a single word, then a sentence, then a paragraph. The key to successful writing is not waiting for the perfect moment or the perfect idea—it's about starting where you are with what you have.\n\n## Finding Your Writing Space\n\nCreating a dedicated writing environment can significantly impact your productivity and creativity. This doesn't need to be a fancy office—it could be a corner of your kitchen table, a favorite coffee shop, or even a park bench.\n\n## Establishing a Writing Routine\n\nConsistency beats perfection every time. Even writing for just 15 minutes daily can lead to substantial progress over time.\n\n## Overcoming the Blank Page\n\nThe blank page can be intimidating, but remember: you can't edit a blank page. Give yourself permission to write badly at first—you can always improve it later.",
-      wordCount: 168,
-      status: "in_progress"
-    },
-    {
-      title: "Chapter 2: Core Concepts", 
-      content: "This chapter explores the fundamental building blocks of effective writing...",
-      wordCount: 15,
-      status: "draft"
-    },
-    {
-      title: "Chapter 3: Advanced Techniques",
-      content: "",
-      wordCount: 0,
-      status: "not_started"
+  // Load chapters from localStorage or use dummy data
+  const [chapters, setChapters] = useState(() => {
+    const savedBook = localStorage.getItem('currentBook');
+    if (savedBook) {
+      const bookData = JSON.parse(savedBook);
+      if (bookData.chapters && bookData.chapters.length > 0) {
+        return bookData.chapters.map(chapter => ({
+          title: chapter.title,
+          content: chapter.content,
+          wordCount: chapter.content.trim().split(/\s+/).length,
+          status: chapter.content.trim() ? "completed" : "not_started"
+        }));
+      }
     }
-  ]);
+    
+    // Fallback dummy data
+    return [
+      {
+        title: "Introduction to the Topic",
+        content: "Welcome to this comprehensive guide on creative writing. In this book, we'll explore the fundamental principles that make writing compelling, engaging, and memorable.\n\nWriting is both an art and a craft. While creativity flows from inspiration, the techniques and structures we'll cover will help you channel that creativity into powerful, purposeful prose.\n\nThroughout this journey, you'll learn to:\n• Develop your unique voice as a writer\n• Create compelling characters and narratives\n• Master the mechanics of good writing\n• Build confidence in your creative abilities\n\nWhether you're a complete beginner or looking to refine your skills, this book will provide you with practical tools and insights to elevate your writing.",
+        wordCount: 142,
+        status: "completed"
+      },
+      {
+        title: "Chapter 1: Getting Started",
+        content: "Every writer's journey begins with a single word, then a sentence, then a paragraph. The key to successful writing is not waiting for the perfect moment or the perfect idea—it's about starting where you are with what you have.\n\n## Finding Your Writing Space\n\nCreating a dedicated writing environment can significantly impact your productivity and creativity. This doesn't need to be a fancy office—it could be a corner of your kitchen table, a favorite coffee shop, or even a park bench.\n\n## Establishing a Writing Routine\n\nConsistency beats perfection every time. Even writing for just 15 minutes daily can lead to substantial progress over time.\n\n## Overcoming the Blank Page\n\nThe blank page can be intimidating, but remember: you can't edit a blank page. Give yourself permission to write badly at first—you can always improve it later.",
+        wordCount: 168,
+        status: "in_progress"
+      },
+      {
+        title: "Chapter 2: Core Concepts", 
+        content: "This chapter explores the fundamental building blocks of effective writing...",
+        wordCount: 15,
+        status: "draft"
+      },
+      {
+        title: "Chapter 3: Advanced Techniques",
+        content: "",
+        wordCount: 0,
+        status: "not_started"
+      }
+    ];
+  });
 
   const updateChapterContent = (content: string) => {
     const wordCount = content.trim().split(/\s+/).length;
