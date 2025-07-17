@@ -14,6 +14,7 @@ import {
   FileText,
   ArrowRight
 } from "lucide-react";
+import { toast } from "sonner";
 
 const ChapterEditor = () => {
   const navigate = useNavigate();
@@ -254,10 +255,35 @@ const ChapterEditor = () => {
                     <div className="text-sm text-muted-foreground">
                       💡 <strong>Tip:</strong> Focus on getting your ideas down first. You can always refine and polish later.
                     </div>
-                    <Button onClick={() => console.log("Chapter saved")}>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Chapter
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setChapters(prev => prev.map((chapter, index) => 
+                            index === currentChapter 
+                              ? { ...chapter, status: "draft" }
+                              : chapter
+                          ));
+                          toast.success("Chapter saved as draft!");
+                        }}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save as Draft
+                      </Button>
+                      <Button 
+                        onClick={() => {
+                          setChapters(prev => prev.map((chapter, index) => 
+                            index === currentChapter 
+                              ? { ...chapter, status: "completed" }
+                              : chapter
+                          ));
+                          toast.success("Chapter marked as completed!");
+                        }}
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Save as Completed
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>

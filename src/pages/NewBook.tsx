@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useNavigate } from "react-router-dom";
-import { Book, ArrowRight, Lightbulb, Save, ChevronLeft, Loader2 } from "lucide-react";
+import { Book, ArrowRight, Lightbulb, Save, ChevronLeft, Loader2, Globe } from "lucide-react";
 import { generateBookContent } from "@/lib/gemini";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ const NewBook = () => {
     topic: "",
     audience: "",
     genre: "",
+    language: "",
     outline: [
       "Introduction to the Topic",
       "Chapter 1: Getting Started",
@@ -29,11 +31,21 @@ const NewBook = () => {
     chapters: []
   });
 
+  // Language options categorized by regions
+  const languageOptions = [
+    { category: "English Speaking", languages: ["English (US)", "English (UK)", "English (Australia)"] },
+    { category: "European", languages: ["Spanish", "French", "German", "Italian", "Portuguese", "Dutch", "Russian", "Polish", "Swedish", "Norwegian"] },
+    { category: "Asian", languages: ["Chinese (Simplified)", "Chinese (Traditional)", "Japanese", "Korean", "Hindi", "Arabic", "Thai", "Vietnamese"] },
+    { category: "Latin American", languages: ["Spanish (Mexico)", "Portuguese (Brazil)", "Spanish (Argentina)"] },
+    { category: "African", languages: ["Swahili", "Amharic", "Hausa", "Yoruba"] },
+    { category: "Other", languages: ["Hebrew", "Turkish", "Greek", "Czech", "Hungarian"] }
+  ];
+
   const handleSaveAndContinue = async () => {
     if (step === 1) {
       setIsGenerating(true);
       try {
-        const content = await generateBookContent(bookData.idea, bookData.audience, bookData.genre);
+        const content = await generateBookContent(bookData.idea, bookData.audience, bookData.genre, bookData.language);
         setBookData(prev => ({
           ...prev,
           outline: content.outline,
@@ -149,6 +161,32 @@ const NewBook = () => {
                     onChange={(e) => setBookData(prev => ({ ...prev, genre: e.target.value }))}
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="language" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Language
+                </Label>
+                <Select value={bookData.language} onValueChange={(value) => setBookData(prev => ({ ...prev, language: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select language for your book" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map((category) => (
+                      <div key={category.category}>
+                        <div className="px-2 py-1 text-sm font-medium text-muted-foreground">
+                          {category.category}
+                        </div>
+                        {category.languages.map((language) => (
+                          <SelectItem key={language} value={language}>
+                            {language}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex gap-4 pt-4">

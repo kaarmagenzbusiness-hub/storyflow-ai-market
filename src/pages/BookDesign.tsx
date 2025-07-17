@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -11,16 +12,40 @@ import {
   Palette, 
   ArrowRight, 
   Save,
-  Sparkles
+  Sparkles,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
+import { generateCoverDesign } from "@/lib/gemini-cover";
+import { toast } from "sonner";
 
 const BookDesign = () => {
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState(0);
-  const [bookInfo, setBookInfo] = useState({
-    title: "The Art of Creative Writing",
-    author: "Your Name",
-    subtitle: "A Complete Guide to Mastering the Craft"
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
+  const [generatedCoverUrl, setGeneratedCoverUrl] = useState("");
+  const [designRecommendations, setDesignRecommendations] = useState("");
+  
+  // Load book data from localStorage
+  const [bookInfo, setBookInfo] = useState(() => {
+    const savedBook = localStorage.getItem('currentBook');
+    if (savedBook) {
+      const bookData = JSON.parse(savedBook);
+      return {
+        title: bookData.title || "The Art of Creative Writing",
+        author: "Your Name",
+        subtitle: bookData.subtitle || "A Complete Guide to Mastering the Craft",
+        idea: bookData.idea || "",
+        genre: bookData.genre || ""
+      };
+    }
+    return {
+      title: "The Art of Creative Writing",
+      author: "Your Name", 
+      subtitle: "A Complete Guide to Mastering the Craft",
+      idea: "",
+      genre: ""
+    };
   });
 
   // Dummy cover templates
@@ -50,6 +75,38 @@ const BookDesign = () => {
       description: "Modern tech-inspired design with gradients"
     }
   ];
+
+  const handleGenerateAICover = async () => {
+    if (!bookInfo.title || !bookInfo.idea) {
+      toast.error("Please ensure book title and idea are available.");
+      return;
+    }
+
+    setIsGeneratingCover(true);
+    try {
+      const coverDesign = await generateCoverDesign(
+        bookInfo.title,
+        bookInfo.idea,
+        bookInfo.genre,
+        designRecommendations
+      );
+      
+      // For demo purposes, we'll use a placeholder image URL
+      // In a real implementation, you would use the imagePrompt with an image generation API
+      const demoImageUrl = `https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop&auto=format`;
+      setGeneratedCoverUrl(demoImageUrl);
+      
+      toast.success("AI cover generated successfully!");
+      
+      // Save the cover design details
+      localStorage.setItem('generatedCoverDesign', JSON.stringify(coverDesign));
+    } catch (error) {
+      toast.error("Failed to generate AI cover. Please try again.");
+      console.error(error);
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -144,9 +201,53 @@ const BookDesign = () => {
                   <p className="text-sm text-muted-foreground mb-3">
                     Generate a custom cover based on your book content and genre
                   </p>
-                  <Button size="sm" className="bg-gradient-accent hover:opacity-90">
-                    Generate AI Cover
-                  </Button>
+                  
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="design-recommendations" className="text-xs">
+                        Design Recommendations (Optional)
+                      </Label>
+                      <Textarea
+                        id="design-recommendations"
+                        placeholder="e.g., Minimalist design, blue color scheme, modern typography..."
+                        value={designRecommendations}
+                        onChange={(e) => setDesignRecommendations(e.target.value)}
+                        className="min-h-[60px] text-sm"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        onClick={handleGenerateAICover}
+                        disabled={isGeneratingCover}
+                        className="bg-gradient-accent hover:opacity-90 flex-1"
+                      >
+                        {isGeneratingCover ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate AI Cover
+                          </>
+                        )}
+                      </Button>
+                      
+                      {generatedCoverUrl && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={handleGenerateAICover}
+                          disabled={isGeneratingCover}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -212,7 +313,7 @@ const BookDesign = () => {
               <CardContent>
                 <div className="aspect-[3/4] relative bg-gradient-creative rounded-lg overflow-hidden shadow-elegant">
                   <img 
-                    src={templates[selectedTemplate].preview}
+                    src={generatedCoverUrl || templates[selectedTemplate].preview}
                     alt="Cover preview"
                     className="w-full h-full object-cover"
                   />
@@ -240,7 +341,7 @@ const BookDesign = () => {
                 
                 <div className="mt-4 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Template: {templates[selectedTemplate].name}
+                    {generatedCoverUrl ? "AI Generated Cover" : `Template: ${templates[selectedTemplate].name}`}
                   </p>
                 </div>
               </CardContent>
@@ -250,13 +351,32 @@ const BookDesign = () => {
               <Button 
                 variant="outline" 
                 className="flex-1"
-                onClick={() => console.log("Design saved")}
+                onClick={() => {
+                  const designData = {
+                    ...bookInfo,
+                    selectedTemplate,
+                    generatedCoverUrl,
+                    designRecommendations
+                  };
+                  localStorage.setItem('bookDesign', JSON.stringify(designData));
+                  toast.success("Design saved successfully!");
+                }}
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Design
               </Button>
               <Button 
-                onClick={() => navigate("/book-preview")}
+                onClick={() => {
+                  // Save the current design to localStorage
+                  const designData = {
+                    ...bookInfo,
+                    selectedTemplate,
+                    generatedCoverUrl,
+                    designRecommendations
+                  };
+                  localStorage.setItem('bookDesign', JSON.stringify(designData));
+                  navigate("/book-preview");
+                }}
                 className="flex-1 bg-gradient-primary hover:opacity-90"
               >
                 Preview Book

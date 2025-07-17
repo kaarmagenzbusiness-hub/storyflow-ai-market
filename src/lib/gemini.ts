@@ -12,17 +12,21 @@ export interface BookContent {
 export const generateBookContent = async (
   idea: string, 
   audience: string, 
-  genre: string
+  genre: string,
+  language?: string
 ): Promise<BookContent> => {
   const prompt = `Create a comprehensive book based on the following details:
 
 Book Idea: ${idea}
 Target Audience: ${audience}
 Genre: ${genre}
+Language: ${language || 'English'}
 
 Please provide:
 1. A detailed outline with 6-8 chapter titles
 2. Full content for each chapter (at least 500 words per chapter)
+
+IMPORTANT: Write the entire book content in ${language || 'English'} language. Ensure all text, chapter titles, and content are written in ${language || 'English'}.
 
 Format your response as JSON with this exact structure:
 {

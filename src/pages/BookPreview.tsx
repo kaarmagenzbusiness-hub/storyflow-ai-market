@@ -17,27 +17,44 @@ const BookPreview = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Dummy book data
-  const bookData = {
-    title: "The Art of Creative Writing",
-    author: "Your Name",
-    subtitle: "A Complete Guide to Mastering the Craft",
-    coverUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570",
-    chapters: [
-      {
-        title: "Introduction to the Topic",
-        content: "Welcome to this comprehensive guide on creative writing. In this book, we'll explore the fundamental principles that make writing compelling, engaging, and memorable.\n\nWriting is both an art and a craft. While creativity flows from inspiration, the techniques and structures we'll cover will help you channel that creativity into powerful, purposeful prose.\n\nThroughout this journey, you'll learn to:\n• Develop your unique voice as a writer\n• Create compelling characters and narratives\n• Master the mechanics of good writing\n• Build confidence in your creative abilities\n\nWhether you're a complete beginner or looking to refine your skills, this book will provide you with practical tools and insights to elevate your writing."
-      },
-      {
-        title: "Chapter 1: Getting Started",
-        content: "Every writer's journey begins with a single word, then a sentence, then a paragraph. The key to successful writing is not waiting for the perfect moment or the perfect idea—it's about starting where you are with what you have.\n\n## Finding Your Writing Space\n\nCreating a dedicated writing environment can significantly impact your productivity and creativity. This doesn't need to be a fancy office—it could be a corner of your kitchen table, a favorite coffee shop, or even a park bench.\n\n## Establishing a Writing Routine\n\nConsistency beats perfection every time. Even writing for just 15 minutes daily can lead to substantial progress over time.\n\n## Overcoming the Blank Page\n\nThe blank page can be intimidating, but remember: you can't edit a blank page. Give yourself permission to write badly at first—you can always improve it later."
-      },
-      {
-        title: "Chapter 2: Core Concepts",
-        content: "This chapter explores the fundamental building blocks of effective writing. Understanding these core concepts will provide you with a solid foundation for all your future writing endeavors.\n\n## The Elements of Style\n\nStyle is what makes your writing uniquely yours. It encompasses your choice of words, sentence structure, tone, and the overall voice that emerges from your work.\n\n## Narrative Structure\n\nWhether you're writing fiction or non-fiction, understanding how to structure your narrative is crucial for keeping readers engaged from beginning to end."
+  // Load real book data from localStorage
+  const bookData = (() => {
+    try {
+      const currentBook = localStorage.getItem('currentBook');
+      const bookDesign = localStorage.getItem('bookDesign');
+      
+      if (currentBook) {
+        const bookContent = JSON.parse(currentBook);
+        const designData = bookDesign ? JSON.parse(bookDesign) : {};
+        
+        return {
+          title: designData.title || bookContent.title || "The Art of Creative Writing",
+          author: designData.author || "Your Name",
+          subtitle: designData.subtitle || "A Complete Guide to Mastering the Craft",
+          coverUrl: designData.generatedCoverUrl || "https://images.unsplash.com/photo-1481627834876-b7833e8f5570",
+          chapters: bookContent.chapters || []
+        };
       }
-    ]
-  };
+      
+      // Fallback to dummy data
+      return {
+        title: "The Art of Creative Writing",
+        author: "Your Name",
+        subtitle: "A Complete Guide to Mastering the Craft",
+        coverUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570",
+        chapters: []
+      };
+    } catch (error) {
+      // Fallback to dummy data on error
+      return {
+        title: "The Art of Creative Writing",
+        author: "Your Name",
+        subtitle: "A Complete Guide to Mastering the Craft",
+        coverUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570",
+        chapters: []
+      };
+    }
+  })();
 
   const totalPages = bookData.chapters.length + 1; // +1 for cover
   const isOnCover = currentPage === 0;
