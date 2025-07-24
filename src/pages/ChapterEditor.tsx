@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   Book, 
@@ -12,15 +14,25 @@ import {
   Sparkles, 
   Eye,
   FileText,
-  ArrowRight
+  ArrowRight,
+  Edit,
+  Wand2
 } from "lucide-react";
 import { toast } from "sonner";
+import { generateBookContent } from "@/lib/gemini";
 
 const ChapterEditor = () => {
   const navigate = useNavigate();
   const { bookId } = useParams();
   const [currentChapter, setCurrentChapter] = useState(0);
   const [autoSaved, setAutoSaved] = useState(false);
+  const [chapterIdeaDialog, setChapterIdeaDialog] = useState(false);
+  const [chapterIdea, setChapterIdea] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState("");
+  const [polishDialog, setPolishDialog] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
 
   // Load chapters from localStorage or use dummy data
   const [chapters, setChapters] = useState(() => {
@@ -82,6 +94,78 @@ const ChapterEditor = () => {
     // Simulate auto-save
     setAutoSaved(true);
     setTimeout(() => setAutoSaved(false), 2000);
+  };
+
+  const updateChapterTitle = (title: string) => {
+    setChapters(prev => prev.map((chapter, index) => 
+      index === currentChapter 
+        ? { ...chapter, title }
+        : chapter
+    ));
+  };
+
+  const generateAIChapter = async () => {
+    if (!chapterIdea.trim()) {
+      toast.error("Please enter a chapter idea");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const savedBook = localStorage.getItem('currentBook');
+      const bookData = savedBook ? JSON.parse(savedBook) : {};
+      
+      const response = await generateBookContent(
+        `Chapter idea: ${chapterIdea}. This is Chapter ${currentChapter + 1} of a book titled "${bookData.title || 'Untitled Book'}".`,
+        bookData.targetAudience || "General audience",
+        bookData.genre || "Non-fiction",
+        bookData.language || "English"
+      );
+
+      if (response.chapters && response.chapters.length > 0) {
+        const generatedChapter = response.chapters[0];
+        updateChapterContent(generatedChapter.content);
+        updateChapterTitle(generatedChapter.title);
+        toast.success("AI content generated successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to generate AI content");
+    } finally {
+      setIsGenerating(false);
+      setChapterIdeaDialog(false);
+      setChapterIdea("");
+    }
+  };
+
+  const polishWithAI = async () => {
+    const currentContent = chapters[currentChapter].content;
+    if (!currentContent.trim()) {
+      toast.error("No content to polish");
+      return;
+    }
+
+    setIsPolishing(true);
+    try {
+      const savedBook = localStorage.getItem('currentBook');
+      const bookData = savedBook ? JSON.parse(savedBook) : {};
+      
+      const response = await generateBookContent(
+        `Polish and improve this chapter content while maintaining the author's voice and style: ${currentContent}`,
+        bookData.targetAudience || "General audience",
+        bookData.genre || "Non-fiction",
+        bookData.language || "English"
+      );
+
+      if (response.chapters && response.chapters.length > 0) {
+        updateChapterContent(response.chapters[0].content);
+        toast.success("Content polished successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to polish content");
+    } finally {
+      setIsPolishing(false);
+      setPolishDialog(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -190,9 +274,50 @@ const ChapterEditor = () => {
             <Card className="shadow-elegant">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-2xl">
-                    {chapters[currentChapter].title}
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    {editingTitle ? (
+                      <Input
+                        value={tempTitle}
+                        onChange={(e) => setTempTitle(e.target.value)}
+                        onBlur={() => {
+                          updateChapterTitle(tempTitle);
+                          setEditingTitle(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            updateChapterTitle(tempTitle);
+                            setEditingTitle(false);
+                          }
+                          if (e.key === 'Escape') {
+                            setTempTitle(chapters[currentChapter].title);
+                            setEditingTitle(false);
+                          }
+                        }}
+                        className="text-2xl font-bold border-none p-0 h-auto"
+                        autoFocus
+                      />
+                    ) : (
+                      <CardTitle 
+                        className="text-2xl cursor-pointer hover:text-primary transition-colors"
+                        onClick={() => {
+                          setTempTitle(chapters[currentChapter].title);
+                          setEditingTitle(true);
+                        }}
+                      >
+                        {chapters[currentChapter].title}
+                      </CardTitle>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setTempTitle(chapters[currentChapter].title);
+                        setEditingTitle(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -231,15 +356,40 @@ const ChapterEditor = () => {
                         <Sparkles className="h-8 w-8 text-accent mx-auto mb-3" />
                         <h3 className="font-semibold mb-2">AI Content Generation</h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Let AI help you get started with this chapter. Click below to generate initial content based on your outline.
+                          Let AI help you get started with this chapter. Click below to generate initial content based on your chapter idea.
                         </p>
-                        <Button 
-                          className="bg-gradient-accent hover:opacity-90"
-                          onClick={() => updateChapterContent(`This chapter will cover the core concepts of the topic. Here's where we dive deep into the fundamental principles that form the foundation of everything we'll explore.\n\n## Key Topics\n\n1. **Foundation Principles** - Understanding the basics\n2. **Core Methodologies** - How to apply these concepts\n3. **Common Patterns** - Recognizing recurring themes\n4. **Best Practices** - Industry-standard approaches\n\nLet's begin by examining the first principle...`)}
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          Generate AI Content
-                        </Button>
+                        <Dialog open={chapterIdeaDialog} onOpenChange={setChapterIdeaDialog}>
+                          <DialogTrigger asChild>
+                            <Button className="bg-gradient-accent hover:opacity-90">
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Generate AI Content
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Generate AI Content</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium">Chapter Idea</label>
+                                <Textarea
+                                  placeholder="Describe what you want this chapter to cover..."
+                                  value={chapterIdea}
+                                  onChange={(e) => setChapterIdea(e.target.value)}
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setChapterIdeaDialog(false)}>
+                                  Cancel
+                                </Button>
+                                <Button onClick={generateAIChapter} disabled={isGenerating}>
+                                  {isGenerating ? "Generating..." : "Generate Content"}
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   )}
@@ -256,6 +406,32 @@ const ChapterEditor = () => {
                       💡 <strong>Tip:</strong> Focus on getting your ideas down first. You can always refine and polish later.
                     </div>
                     <div className="flex gap-2">
+                      <Dialog open={polishDialog} onOpenChange={setPolishDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" disabled={!chapters[currentChapter].content.trim()}>
+                            <Wand2 className="h-4 w-4 mr-2" />
+                            Smart Polish (AI + Human)
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Smart Polish Content</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <p className="text-sm text-muted-foreground">
+                              AI will polish and improve your content while maintaining your voice and style.
+                            </p>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => setPolishDialog(false)}>
+                                Cancel
+                              </Button>
+                              <Button onClick={polishWithAI} disabled={isPolishing}>
+                                {isPolishing ? "Polishing..." : "Polish Content"}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                       <Button 
                         variant="outline"
                         onClick={() => {
