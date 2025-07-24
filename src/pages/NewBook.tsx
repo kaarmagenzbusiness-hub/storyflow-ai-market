@@ -12,8 +12,9 @@ import { toast } from "sonner";
 
 const NewBook = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // Start with choice step
   const [isGenerating, setIsGenerating] = useState(false);
+  const [creationMode, setCreationMode] = useState<'ai' | 'manual' | null>(null);
   const [bookData, setBookData] = useState({
     idea: "",
     topic: "",
@@ -97,7 +98,11 @@ const NewBook = () => {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              onClick={() => step === 1 ? navigate("/dashboard") : setStep(1)}
+              onClick={() => {
+                if (step === 0) navigate("/dashboard")
+                else if (step === 1) setStep(0)
+                else setStep(1)
+              }}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back
@@ -111,13 +116,89 @@ const NewBook = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="text-sm text-muted-foreground">
-              Step {step} of 2
+              {step === 0 ? "Choose Method" : `Step ${step} of 2`}
             </div>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {step === 0 && (
+          <Card className="shadow-elegant">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2 text-2xl">
+                <Book className="h-6 w-6 text-primary" />
+                How would you like to create your book?
+              </CardTitle>
+              <CardDescription>
+                Choose your preferred method to start writing your book
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/50" 
+                      onClick={() => {
+                        setCreationMode('ai');
+                        setStep(1);
+                      }}>
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-4">
+                      <div className="p-3 bg-gradient-primary rounded-full w-fit mx-auto">
+                        <Lightbulb className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Start Writing using AI</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Let AI help you generate content, chapters, and structure based on your idea
+                    </p>
+                    <Button className="w-full bg-gradient-primary hover:opacity-90">
+                      Use AI Assistant
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="cursor-pointer transition-all hover:shadow-lg border-2 hover:border-primary/50"
+                      onClick={() => {
+                        setCreationMode('manual');
+                        // Set up basic structure for manual creation
+                        const manualBookData = {
+                          idea: "",
+                          topic: "My Book",
+                          audience: "",
+                          genre: "",
+                          language: "English (US)",
+                          outline: ["Chapter 1", "Chapter 2", "Chapter 3"],
+                          chapters: [
+                            { title: "Chapter 1", content: "", status: "draft" },
+                            { title: "Chapter 2", content: "", status: "draft" },
+                            { title: "Chapter 3", content: "", status: "draft" }
+                          ]
+                        };
+                        localStorage.setItem('currentBook', JSON.stringify(manualBookData));
+                        navigate("/chapter-editor/new");
+                      }}>
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-4">
+                      <div className="p-3 bg-secondary rounded-full w-fit mx-auto">
+                        <Book className="h-8 w-8 text-secondary-foreground" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Start Writing on your own</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create your book from scratch with complete creative control
+                    </p>
+                    <Button variant="outline" className="w-full">
+                      Manual Creation
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {step === 1 && (
           <Card className="shadow-elegant">
             <CardHeader className="text-center">
