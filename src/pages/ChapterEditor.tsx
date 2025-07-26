@@ -16,7 +16,9 @@ import {
   FileText,
   ArrowRight,
   Edit,
-  Wand2
+  Wand2,
+  Search,
+  Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import { generateBookContent } from "@/lib/gemini";
@@ -33,6 +35,10 @@ const ChapterEditor = () => {
   const [tempTitle, setTempTitle] = useState("");
   const [polishDialog, setPolishDialog] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
+  const [referenceDialog, setReferenceDialog] = useState(false);
+  const [referenceTopic, setReferenceTopic] = useState("");
+  const [isGeneratingReference, setIsGeneratingReference] = useState(false);
+  const [generatedReferences, setGeneratedReferences] = useState("");
 
   // Load chapters from localStorage or use dummy data
   const [chapters, setChapters] = useState(() => {
@@ -91,6 +97,23 @@ const ChapterEditor = () => {
         : chapter
     ));
     
+    // Save to localStorage immediately for manual books
+    const savedBook = localStorage.getItem('currentBook');
+    if (savedBook) {
+      const bookData = JSON.parse(savedBook);
+      bookData.chapters = chapters.map((chapter, index) => 
+        index === currentChapter 
+          ? { 
+              ...chapter, 
+              content, 
+              wordCount,
+              status: content.trim() ? "in_progress" : "not_started"
+            }
+          : chapter
+      );
+      localStorage.setItem('currentBook', JSON.stringify(bookData));
+    }
+    
     // Simulate auto-save
     setAutoSaved(true);
     setTimeout(() => setAutoSaved(false), 2000);
@@ -102,6 +125,18 @@ const ChapterEditor = () => {
         ? { ...chapter, title }
         : chapter
     ));
+    
+    // Save to localStorage immediately for manual books
+    const savedBook = localStorage.getItem('currentBook');
+    if (savedBook) {
+      const bookData = JSON.parse(savedBook);
+      bookData.chapters = chapters.map((chapter, index) => 
+        index === currentChapter 
+          ? { ...chapter, title }
+          : chapter
+      );
+      localStorage.setItem('currentBook', JSON.stringify(bookData));
+    }
   };
 
   const generateAIChapter = async () => {
@@ -166,6 +201,55 @@ const ChapterEditor = () => {
       setIsPolishing(false);
       setPolishDialog(false);
     }
+  };
+
+  const generateReferences = async () => {
+    if (!referenceTopic.trim()) {
+      toast.error("Please enter a topic for references");
+      return;
+    }
+
+    setIsGeneratingReference(true);
+    try {
+      const response = await generateBookContent(
+        `Provide comprehensive references, sources, and research materials for the topic: "${referenceTopic}". Include academic sources, books, articles, websites, and other credible resources that would be helpful for someone writing about this topic. Format as a well-organized reference list with brief descriptions of each source.`,
+        "General audience",
+        "Reference material",
+        "English"
+      );
+
+      if (response.chapters && response.chapters.length > 0) {
+        setGeneratedReferences(response.chapters[0].content);
+        toast.success("References generated successfully!");
+      }
+    } catch (error) {
+      toast.error("Failed to generate references");
+    } finally {
+      setIsGeneratingReference(false);
+    }
+  };
+
+  const addNewChapter = () => {
+    const newChapter = {
+      title: `Chapter ${chapters.length + 1}: New Chapter`,
+      content: "",
+      wordCount: 0,
+      status: "not_started"
+    };
+    
+    setChapters(prev => [...prev, newChapter]);
+    
+    // Save to localStorage
+    const savedBook = localStorage.getItem('currentBook');
+    if (savedBook) {
+      const bookData = JSON.parse(savedBook);
+      bookData.chapters = [...chapters, newChapter];
+      localStorage.setItem('currentBook', JSON.stringify(bookData));
+    }
+    
+    // Navigate to the new chapter
+    setCurrentChapter(chapters.length);
+    toast.success("New chapter added!");
   };
 
   const getStatusColor = (status: string) => {
@@ -265,6 +349,16 @@ const ChapterEditor = () => {
                     </div>
                   </div>
                 ))}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addNewChapter}
+                  className="w-full mt-2"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add New Chapter
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -406,6 +500,47 @@ const ChapterEditor = () => {
                       💡 <strong>Tip:</strong> Focus on getting your ideas down first. You can always refine and polish later.
                     </div>
                     <div className="flex gap-2">
+                      <Dialog open={referenceDialog} onOpenChange={setReferenceDialog}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline">
+                            <Search className="h-4 w-4 mr-2" />
+                            Find References
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Find References</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium">Topic for References</label>
+                              <Textarea
+                                placeholder="Enter the topic you want to find references for..."
+                                value={referenceTopic}
+                                onChange={(e) => setReferenceTopic(e.target.value)}
+                                className="mt-1"
+                              />
+                            </div>
+                            {generatedReferences && (
+                              <div>
+                                <label className="text-sm font-medium">Generated References</label>
+                                <div className="mt-1 p-3 bg-muted rounded-lg max-h-60 overflow-y-auto">
+                                  <pre className="text-sm whitespace-pre-wrap">{generatedReferences}</pre>
+                                </div>
+                              </div>
+                            )}
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => setReferenceDialog(false)}>
+                                Close
+                              </Button>
+                              <Button onClick={generateReferences} disabled={isGeneratingReference}>
+                                {isGeneratingReference ? "Generating..." : "Generate References"}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      
                       <Dialog open={polishDialog} onOpenChange={setPolishDialog}>
                         <DialogTrigger asChild>
                           <Button variant="outline" disabled={!chapters[currentChapter].content.trim()}>
@@ -435,11 +570,21 @@ const ChapterEditor = () => {
                       <Button 
                         variant="outline"
                         onClick={() => {
-                          setChapters(prev => prev.map((chapter, index) => 
+                          const updatedChapters = chapters.map((chapter, index) => 
                             index === currentChapter 
                               ? { ...chapter, status: "draft" }
                               : chapter
-                          ));
+                          );
+                          setChapters(updatedChapters);
+                          
+                          // Save to localStorage
+                          const savedBook = localStorage.getItem('currentBook');
+                          if (savedBook) {
+                            const bookData = JSON.parse(savedBook);
+                            bookData.chapters = updatedChapters;
+                            localStorage.setItem('currentBook', JSON.stringify(bookData));
+                          }
+                          
                           toast.success("Chapter saved as draft!");
                         }}
                       >
@@ -448,11 +593,21 @@ const ChapterEditor = () => {
                       </Button>
                       <Button 
                         onClick={() => {
-                          setChapters(prev => prev.map((chapter, index) => 
+                          const updatedChapters = chapters.map((chapter, index) => 
                             index === currentChapter 
                               ? { ...chapter, status: "completed" }
                               : chapter
-                          ));
+                          );
+                          setChapters(updatedChapters);
+                          
+                          // Save to localStorage
+                          const savedBook = localStorage.getItem('currentBook');
+                          if (savedBook) {
+                            const bookData = JSON.parse(savedBook);
+                            bookData.chapters = updatedChapters;
+                            localStorage.setItem('currentBook', JSON.stringify(bookData));
+                          }
+                          
                           toast.success("Chapter marked as completed!");
                         }}
                       >
