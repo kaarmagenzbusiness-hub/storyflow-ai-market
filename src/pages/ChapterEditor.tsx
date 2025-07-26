@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   Book, 
@@ -18,7 +20,18 @@ import {
   Edit,
   Wand2,
   Search,
-  Plus
+  Plus,
+  Bold,
+  Italic,
+  Underline,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Type,
+  Palette,
+  Image,
+  Upload
 } from "lucide-react";
 import { toast } from "sonner";
 import { generateBookContent } from "@/lib/gemini";
@@ -39,6 +52,17 @@ const ChapterEditor = () => {
   const [referenceTopic, setReferenceTopic] = useState("");
   const [isGeneratingReference, setIsGeneratingReference] = useState(false);
   const [generatedReferences, setGeneratedReferences] = useState("");
+  
+  // Rich text editor states
+  const [selectedFont, setSelectedFont] = useState("font-serif");
+  const [selectedAlignment, setSelectedAlignment] = useState("left");
+  const [selectedTextColor, setSelectedTextColor] = useState("text-foreground");
+  const [selectedBgColor, setSelectedBgColor] = useState("bg-background");
+  const [fontSize, setFontSize] = useState("text-base");
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load chapters from localStorage or use dummy data
   const [chapters, setChapters] = useState(() => {
@@ -265,6 +289,47 @@ const ChapterEditor = () => {
   const canGoNext = () => currentChapter < chapters.length - 1;
   const canGoPrev = () => currentChapter > 0;
 
+  const insertImage = (imageSrc: string, altText: string = "Image") => {
+    const imageMarkdown = `\n![${altText}](${imageSrc})\n`;
+    const currentContent = chapters[currentChapter].content;
+    updateChapterContent(currentContent + imageMarkdown);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Create object URL for local preview
+      const imageUrl = URL.createObjectURL(file);
+      insertImage(imageUrl, file.name);
+      toast.success("Image inserted successfully!");
+    }
+  };
+
+  const insertPlaceholderImage = (type: string) => {
+    const placeholderImages = {
+      infographic: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=600&fit=crop",
+      character: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=600&fit=crop",
+      nature: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=800&h=600&fit=crop",
+      tech: "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=600&fit=crop"
+    };
+    
+    const imageUrl = placeholderImages[type as keyof typeof placeholderImages];
+    if (imageUrl) {
+      insertImage(imageUrl, `${type} image`);
+      toast.success(`${type} image inserted!`);
+    }
+  };
+
+  const applyFormatting = () => {
+    let classes = [selectedFont, selectedAlignment, selectedTextColor, selectedBgColor, fontSize];
+    
+    if (isBold) classes.push("font-bold");
+    if (isItalic) classes.push("italic");
+    if (isUnderline) classes.push("underline");
+    
+    return classes.join(" ");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
@@ -444,6 +509,213 @@ const ChapterEditor = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+                  {/* Rich Text Formatting Toolbar */}
+                  <Card className="border-accent/20">
+                    <CardContent className="p-4">
+                      <div className="flex flex-wrap items-center gap-4">
+                        {/* Font Selection */}
+                        <div className="flex items-center gap-2">
+                          <Type className="h-4 w-4" />
+                          <Select value={selectedFont} onValueChange={setSelectedFont}>
+                            <SelectTrigger className="w-40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="font-serif">Serif</SelectItem>
+                              <SelectItem value="font-sans">Sans Serif</SelectItem>
+                              <SelectItem value="font-mono">Monospace</SelectItem>
+                              <SelectItem value="font-playfair">Playfair Display</SelectItem>
+                              <SelectItem value="font-inter">Inter</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Separator orientation="vertical" className="h-6" />
+
+                        {/* Font Size */}
+                        <Select value={fontSize} onValueChange={setFontSize}>
+                          <SelectTrigger className="w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text-xs">XS</SelectItem>
+                            <SelectItem value="text-sm">SM</SelectItem>
+                            <SelectItem value="text-base">MD</SelectItem>
+                            <SelectItem value="text-lg">LG</SelectItem>
+                            <SelectItem value="text-xl">XL</SelectItem>
+                            <SelectItem value="text-2xl">2XL</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Separator orientation="vertical" className="h-6" />
+
+                        {/* Text Formatting */}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant={isBold ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsBold(!isBold)}
+                          >
+                            <Bold className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={isItalic ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsItalic(!isItalic)}
+                          >
+                            <Italic className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={isUnderline ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsUnderline(!isUnderline)}
+                          >
+                            <Underline className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <Separator orientation="vertical" className="h-6" />
+
+                        {/* Text Alignment */}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant={selectedAlignment === "text-left" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedAlignment("text-left")}
+                          >
+                            <AlignLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={selectedAlignment === "text-center" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedAlignment("text-center")}
+                          >
+                            <AlignCenter className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={selectedAlignment === "text-right" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedAlignment("text-right")}
+                          >
+                            <AlignRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={selectedAlignment === "text-justify" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedAlignment("text-justify")}
+                          >
+                            <AlignJustify className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        <Separator orientation="vertical" className="h-6" />
+
+                        {/* Colors */}
+                        <div className="flex items-center gap-2">
+                          <Palette className="h-4 w-4" />
+                          <Select value={selectedTextColor} onValueChange={setSelectedTextColor}>
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text-foreground">Default</SelectItem>
+                              <SelectItem value="text-primary">Primary</SelectItem>
+                              <SelectItem value="text-secondary">Secondary</SelectItem>
+                              <SelectItem value="text-accent">Accent</SelectItem>
+                              <SelectItem value="text-muted-foreground">Muted</SelectItem>
+                              <SelectItem value="text-destructive">Red</SelectItem>
+                              <SelectItem value="text-success">Green</SelectItem>
+                              <SelectItem value="text-warning">Yellow</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Background Color */}
+                        <Select value={selectedBgColor} onValueChange={setSelectedBgColor}>
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="bg-background">Default</SelectItem>
+                            <SelectItem value="bg-muted">Muted</SelectItem>
+                            <SelectItem value="bg-accent/10">Light Accent</SelectItem>
+                            <SelectItem value="bg-primary/10">Light Primary</SelectItem>
+                            <SelectItem value="bg-gradient-subtle">Gradient</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Separator orientation="vertical" className="h-6" />
+
+                        {/* Image Upload */}
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload
+                          </Button>
+                          
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Image className="h-4 w-4 mr-1" />
+                                Stock Images
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Insert Stock Images</DialogTitle>
+                              </DialogHeader>
+                              <div className="grid grid-cols-2 gap-4">
+                                <Button
+                                  variant="outline"
+                                  className="h-24 flex flex-col"
+                                  onClick={() => insertPlaceholderImage("infographic")}
+                                >
+                                  <div className="text-2xl mb-2">📊</div>
+                                  <span className="text-sm">Infographic</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-24 flex flex-col"
+                                  onClick={() => insertPlaceholderImage("character")}
+                                >
+                                  <div className="text-2xl mb-2">🤖</div>
+                                  <span className="text-sm">Character</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-24 flex flex-col"
+                                  onClick={() => insertPlaceholderImage("nature")}
+                                >
+                                  <div className="text-2xl mb-2">🦌</div>
+                                  <span className="text-sm">Nature</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  className="h-24 flex flex-col"
+                                  onClick={() => insertPlaceholderImage("tech")}
+                                >
+                                  <div className="text-2xl mb-2">💻</div>
+                                  <span className="text-sm">Technology</span>
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {chapters[currentChapter].content === "" && (
                     <div className="p-6 bg-gradient-accent/10 rounded-lg border-2 border-dashed border-accent/20">
                       <div className="text-center">
@@ -488,12 +760,47 @@ const ChapterEditor = () => {
                     </div>
                   )}
                   
-                  <Textarea
-                    value={chapters[currentChapter].content}
-                    onChange={(e) => updateChapterContent(e.target.value)}
-                    placeholder="Start writing your chapter here... You can edit any generated content to match your voice and style."
-                    className="min-h-[600px] resize-none"
-                  />
+                  {/* Rich Text Editor with Live Preview */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Editor */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Markdown Editor</label>
+                      <Textarea
+                        value={chapters[currentChapter].content}
+                        onChange={(e) => updateChapterContent(e.target.value)}
+                        placeholder="Start writing your chapter here... 
+
+💡 **Formatting Tips:**
+- Use **bold** or *italic* text
+- Add images: ![alt text](image-url)
+- Create headers: # Title or ## Subtitle
+- Lists: - Item 1 or 1. Numbered item
+
+You can edit any generated content to match your voice and style."
+                        className={`min-h-[600px] resize-none ${applyFormatting()}`}
+                      />
+                    </div>
+                    
+                    {/* Live Preview */}
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Live Preview</label>
+                      <div className={`min-h-[600px] p-4 border rounded-lg overflow-auto ${selectedBgColor}`}>
+                        <div 
+                          className={`prose prose-sm max-w-none ${applyFormatting()}`}
+                          dangerouslySetInnerHTML={{
+                            __html: chapters[currentChapter].content
+                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                              .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4">$1</h1>')
+                              .replace(/^## (.*$)/gm, '<h2 class="text-xl font-semibold mb-3">$1</h2>')
+                              .replace(/^### (.*$)/gm, '<h3 class="text-lg font-medium mb-2">$1</h3>')
+                              .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4" />')
+                              .replace(/\n/g, '<br />')
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   
                   <div className="flex items-center justify-between pt-4 border-t">
                     <div className="text-sm text-muted-foreground">

@@ -86,6 +86,13 @@ export default {
 				'smooth': 'var(--transition-smooth)',
 				'spring': 'var(--transition-spring)'
 			},
+			fontFamily: {
+				sans: ["Inter", "sans-serif"],
+				serif: ["Georgia", "serif"],
+				mono: ["Courier New", "monospace"],
+				playfair: ["Playfair Display", "serif"],
+				inter: ["Inter", "sans-serif"],
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
