@@ -77,8 +77,8 @@ const BookDesign = () => {
   ];
 
   const handleGenerateAICover = async () => {
-    if (!bookInfo.title || !bookInfo.idea) {
-      toast.error("Please ensure book title and idea are available.");
+    if (!bookInfo.title) {
+      toast.error("Please ensure book title is available.");
       return;
     }
 
@@ -86,8 +86,8 @@ const BookDesign = () => {
     try {
       const coverDesign = await generateCoverDesign(
         bookInfo.title,
-        bookInfo.idea,
-        bookInfo.genre,
+        bookInfo.idea || "A compelling story",
+        bookInfo.genre || "General",
         designRecommendations
       );
       

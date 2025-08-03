@@ -15,6 +15,7 @@ import {
   CheckCircle,
   ArrowRight
 } from "lucide-react";
+import { toast } from "sonner";
 
 const MarketplaceListing = () => {
   const navigate = useNavigate();
@@ -37,7 +38,29 @@ const MarketplaceListing = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate submission
+    
+    // Save the book to marketplace listings in localStorage
+    const marketplaceBooks = JSON.parse(localStorage.getItem('marketplaceBooks') || '[]');
+    const newBook = {
+      id: Date.now(), // Simple ID generation
+      title: listingData.title,
+      author: listingData.authorName,
+      price: parseFloat(listingData.price),
+      rating: 0, // New books start with no rating
+      reviewCount: 0,
+      category: listingData.category,
+      subcategory: listingData.subcategory,
+      coverUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570", // Placeholder
+      description: listingData.description,
+      tags: listingData.tags.split(',').map(tag => tag.trim()),
+      bestseller: false,
+      userCreated: true
+    };
+    
+    marketplaceBooks.push(newBook);
+    localStorage.setItem('marketplaceBooks', JSON.stringify(marketplaceBooks));
+    
+    toast.success("Book successfully submitted to marketplace!");
     navigate("/marketplace");
   };
 

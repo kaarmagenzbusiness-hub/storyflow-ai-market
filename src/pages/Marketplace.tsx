@@ -22,8 +22,8 @@ const Marketplace = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popularity");
 
-  // Dummy marketplace data
-  const books = [
+  // Load user-submitted books from localStorage and combine with dummy data
+  const dummyBooks = [
     {
       id: 1,
       title: "The Art of Creative Writing",
@@ -109,6 +109,10 @@ const Marketplace = () => {
       bestseller: false
     }
   ];
+
+  // Combine dummy books with user-submitted books
+  const userBooks = JSON.parse(localStorage.getItem('marketplaceBooks') || '[]');
+  const books = [...dummyBooks, ...userBooks];
 
   const categories = [
     { value: "all", label: "All Categories" },
